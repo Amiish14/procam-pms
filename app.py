@@ -505,7 +505,7 @@ EMPLOYEE_MASTER = [
 
     ('EMP2972023', 'JAYANTA KUMAR PAUL', 'Corporate', 'HR', 'E1', 'Executive', 'EMP2482019', 'EMPLOYEE', 'A1, A2, A3, A12, A13, A14, A15, A16', 'B1, B2, B3, B12, B13, B14, B15, B16'),
 
-    ('EMP2992023', 'DIPANKA TALUKDER', 'Corporate', 'Admin', 'E1', 'Executive', 'DIR12010', 'EMPLOYEE', 'A1, A2, A3, A13, A14, A15, A16', 'B1, B2, B3, B13, B14, B15, B16'),
+    ('EMP2992023', 'DIPANKA TALUKDER', 'Corporate', 'Admin', 'E1', 'Executive', 'DIR12010', 'EMPLOYEE', 'A1, A2, A3, A11, A14, A15, A16', 'B1, B2, B3, B11, B14, B15, B16'),
 
     ('EMP3122023', 'SUNITA NAGA ALKAR', 'Corporate', 'Finance', 'J2', 'Assistant', 'EMP182010', 'EMPLOYEE', 'A1, A2, A3, A8, A14, A15, A16', 'B1, B2, B3, B8, B14, B15, B16'),
 
@@ -869,6 +869,34 @@ def get_employees():
         'vertical': e.department.vertical_code if e.department else '',
         'manager_name': EMP_LOOKUP.get(EMP_LOOKUP.get(e.employee_code,{}).get('mc',''),{}).get('n',''),
     } for e in emps])
+
+@app.route('/api/admin/update_employee', methods=['POST'])
+@login_required
+def admin_update_employee():
+    if session.get('employee_code') != 'DIR12010':
+        return jsonify({'error': 'Only Super Admin (DIR12010) can edit employee data'}), 403
+    data = request.json or {}
+    emp_id = data.get('employee_id')
+    if not emp_id:
+        return jsonify({'error': 'employee_id required'}), 400
+    emp = Employee.query.get(emp_id)
+    if not emp:
+        return jsonify({'error': 'Employee not found'}), 404
+    if 'full_name' in data and data['full_name'].strip():
+        emp.full_name = data['full_name'].strip()
+    if 'designation' in data:
+        emp.designation = data['designation'].strip() if data['designation'] else emp.designation
+    if 'reporting_manager_code' in data:
+        mgr_code = data['reporting_manager_code'].strip().upper()
+        if mgr_code:
+            mgr = Employee.query.filter_by(employee_code=mgr_code, is_active=True).first()
+            if not mgr:
+                return jsonify({'error': f'Manager {mgr_code} not found'}), 400
+            if mgr.id == emp.id:
+                return jsonify({'error': 'Cannot set self as manager'}), 400
+            emp.reporting_manager_id = mgr.id
+    db.session.commit()
+    return jsonify({'success': True, 'message': f'Updated {emp.employee_code}'})
 
 @app.route('/api/cycles', methods=['GET'])
 @login_required
