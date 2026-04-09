@@ -505,7 +505,7 @@ EMPLOYEE_MASTER = [
 
     ('EMP2972023', 'JAYANTA KUMAR PAUL', 'Corporate', 'HR', 'E1', 'Executive', 'EMP2482019', 'EMPLOYEE', 'A1, A2, A3, A12, A13, A14, A15, A16', 'B1, B2, B3, B12, B13, B14, B15, B16'),
 
-    ('EMP2992023', 'DIPANKA TALUKDER', 'Corporate', 'Admin', 'E1', 'Executive', 'DIR12010', 'EMPLOYEE', 'A1, A2, A3, A11, A14, A15, A16', 'B1, B2, B3, B11, B14, B15, B16'),
+    ('EMP2992023', 'DIPANKA TALUKDER', 'Corporate', 'Admin', 'E1', 'Executive', 'DIR12010', 'EMPLOYEE', 'A1, A2, A3, A13, A14, A15, A16', 'B1, B2, B3, B13, B14, B15, B16'),
 
     ('EMP3122023', 'SUNITA NAGA ALKAR', 'Corporate', 'Finance', 'J2', 'Assistant', 'EMP182010', 'EMPLOYEE', 'A1, A2, A3, A8, A14, A15, A16', 'B1, B2, B3, B8, B14, B15, B16'),
 
@@ -814,7 +814,7 @@ def tracker():
         'form_id': f.id, 'employee_code': f.employee.employee_code, 'full_name': f.employee.full_name,
         'designation': f.employee.designation, 'vertical': f.employee.department.vertical_code if f.employee.department else '',
         'grade': f.employee.grade.grade_code if f.employee.grade else '',
-        'manager_name': EMP_LOOKUP.get(EMP_LOOKUP.get(f.employee.employee_code,{}).get('mc',''),{}).get('n',''),
+        'manager_name': f.employee.manager.full_name if f.employee.manager else '',
         'parta_status': f.parta_status, 'partb_status': f.partb_status, 'hr_status': f.hr_status,
         'final_score': f.final_score, 'final_rating': f.final_rating,
     } for f in forms])
@@ -845,7 +845,7 @@ def form_detail(fid):
         'form_id': fid, 'employee_code': emp.employee_code, 'full_name': emp.full_name,
         'designation': emp.designation, 'vertical': emp.department.vertical_code if emp.department else '',
         'grade': emp.grade.grade_code if emp.grade else '',
-        'manager_name': EMP_LOOKUP.get(md.get('mc',''),{}).get('n',''),
+        'manager_name': emp.manager.full_name if emp.manager else '',
         'parta_status': form.parta_status, 'partb_status': form.partb_status, 'hr_status': form.hr_status,
         'final_score': form.final_score, 'final_rating': form.final_rating,
         'increment_recommendation': form.increment_recommendation,
@@ -867,7 +867,7 @@ def get_employees():
         'id': e.id, 'employee_code': e.employee_code, 'full_name': e.full_name,
         'designation': e.designation, 'grade': e.grade.grade_code if e.grade else '',
         'vertical': e.department.vertical_code if e.department else '',
-        'manager_name': EMP_LOOKUP.get(EMP_LOOKUP.get(e.employee_code,{}).get('mc',''),{}).get('n',''),
+        'manager_name': e.manager.full_name if e.manager else '',
     } for e in emps])
 
 @app.route('/api/admin/update_employee', methods=['POST'])
@@ -950,10 +950,10 @@ def export_excel():
     ws.freeze_panes = 'A2'
     forms = AppraisalForm.query.filter_by(cycle_id=active.id).all() if active else []
     for ri, f in enumerate(forms, 2):
-        emp = f.employee; md = EMP_LOOKUP.get(emp.employee_code,{})
+        emp = f.employee
         row = [emp.employee_code, emp.full_name, emp.department.vertical_code if emp.department else '',
                emp.grade.grade_code if emp.grade else '', emp.designation or '',
-               EMP_LOOKUP.get(md.get('mc',''),{}).get('n',''),
+               emp.manager.full_name if emp.manager else '',
                f.parta_status, f.partb_status, f.hr_status, f.final_score, f.final_rating or '',
                f.increment_recommendation or '', f.promotion_recommendation or '', f.hr_notes or '']
         bg = white_f if ri % 2 == 0 else gray_f
@@ -1015,7 +1015,7 @@ def export_excel():
         emp = f.employee; md = EMP_LOOKUP.get(emp.employee_code, {})
         info = [emp.employee_code, emp.full_name, emp.department.vertical_code if emp.department else '',
                 emp.grade.grade_code if emp.grade else '',
-                EMP_LOOKUP.get(md.get('mc',''),{}).get('n',''), f.parta_status]
+                emp.manager.full_name if emp.manager else '', f.parta_status]
         bg = white_f if ri % 2 == 0 else gray_f
         for ci, val in enumerate(info, 1):
             c = ws2.cell(row=ri, column=ci, value=val); c.font = nf2; c.fill = bg; c.border = bdr
@@ -1076,7 +1076,7 @@ def export_excel():
         emp = f.employee; md = EMP_LOOKUP.get(emp.employee_code, {})
         info = [emp.employee_code, emp.full_name, emp.department.vertical_code if emp.department else '',
                 emp.grade.grade_code if emp.grade else '',
-                EMP_LOOKUP.get(md.get('mc',''),{}).get('n',''), f.partb_status]
+                emp.manager.full_name if emp.manager else '', f.partb_status]
         bg = white_f if ri % 2 == 0 else gray_f
         for ci, val in enumerate(info, 1):
             c = ws3.cell(row=ri, column=ci, value=val); c.font = nf2; c.fill = bg; c.border = bdr
