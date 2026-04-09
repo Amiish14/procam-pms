@@ -17,9 +17,10 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_PATH = os.environ.get('DATABASE_PATH', os.path.join(BASE_DIR, 'procam_pms.db'))
 app = Flask(__name__, template_folder='templates', static_folder='static')
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'procam-pms-v5-prod-2026')
-app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(BASE_DIR, "procam_pms.db")}'
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{DB_PATH}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['PERMANENT_SESSION_LIFETIME'] = datetime.timedelta(hours=8)
@@ -504,7 +505,7 @@ EMPLOYEE_MASTER = [
 
     ('EMP2972023', 'JAYANTA KUMAR PAUL', 'Corporate', 'HR', 'E1', 'Executive', 'EMP2482019', 'EMPLOYEE', 'A1, A2, A3, A12, A13, A14, A15, A16', 'B1, B2, B3, B12, B13, B14, B15, B16'),
 
-    ('EMP2992023', 'DIPANKA TALUKDER', 'Corporate', 'Admin', 'E1', 'Executive', 'DIR12010', 'EMPLOYEE', 'A1, A2, A3, A11, A14, A15, A16', 'B1, B2, B3, B11, B14, B15, B16'),
+    ('EMP2992023', 'DIPANKA TALUKDER', 'Corporate', 'Admin', 'E1', 'Executive', 'DIR12010', 'EMPLOYEE', 'A1, A2, A3, A13, A14, A15, A16', 'B1, B2, B3, B13, B14, B15, B16'),
 
     ('EMP3122023', 'SUNITA NAGA ALKAR', 'Corporate', 'Finance', 'J2', 'Assistant', 'EMP182010', 'EMPLOYEE', 'A1, A2, A3, A8, A14, A15, A16', 'B1, B2, B3, B8, B14, B15, B16'),
 
@@ -1075,7 +1076,7 @@ def backup_data():
     if session.get('role') not in ('SUPER_ADMIN','HR_ADMIN'):
         return jsonify({'error':'Unauthorized'}), 403
     import sqlite3
-    db_path = os.path.join(BASE_DIR, 'procam_pms.db')
+    db_path = DB_PATH
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
@@ -1256,7 +1257,7 @@ def init_db():
 def migrate_db():
     """Safe migration — adds new columns to existing DB without losing data."""
     import sqlite3
-    db_path = os.path.join(BASE_DIR, 'procam_pms.db')
+    db_path = DB_PATH
     if not os.path.exists(db_path):
         return
     conn = sqlite3.connect(db_path)
