@@ -677,6 +677,42 @@ def my_form():
         'partb_submitted_at': form.partb_submitted_at.isoformat() if form.partb_submitted_at else None,
     })
 
+@app.route('/api/my-results', methods=['GET'])
+@login_required
+def my_results():
+    active = AppraisalCycle.query.filter_by(status='ACTIVE').first()
+    if not active: return jsonify({'error': 'No active appraisal cycle'}), 404
+    form = AppraisalForm.query.filter_by(cycle_id=active.id, employee_id=session['employee_id']).first()
+    if not form: return jsonify({'error': 'No appraisal form found'}), 404
+    emp = Employee.query.get(session['employee_id'])
+    md = EMP_LOOKUP.get(emp.employee_code, {})
+    result = {
+        'form_id': form.id,
+        'employee_code': emp.employee_code,
+        'full_name': emp.full_name,
+        'designation': emp.designation,
+        'vertical': emp.department.vertical_code if emp.department else '',
+        'grade': emp.grade.grade_code if emp.grade else '',
+        'manager_name': emp.manager.full_name if emp.manager else '',
+        'parta_status': form.parta_status,
+        'partb_status': form.partb_status,
+        'hr_status': form.hr_status,
+        'question_sections_a': md.get('a_secs', []),
+        'question_sections_b': md.get('b_secs', []),
+        'parta_ratings': {f'{r.section_code}_{r.question_index}': r.rating for r in PartARating.query.filter_by(form_id=form.id).all()},
+        'parta_texts': {f'{t.section_code}_{t.field_key}': t.response_text for t in PartAText.query.filter_by(form_id=form.id).all()},
+    }
+    if form.partb_status == 'SUBMITTED':
+        result['partb_ratings'] = {f'{r.section_code}_{r.question_index}': r.rating for r in PartBRating.query.filter_by(form_id=form.id).all()}
+        result['partb_texts'] = {f'{t.section_code}_{t.field_key}': t.response_text for t in PartBText.query.filter_by(form_id=form.id).all()}
+    if form.hr_status == 'SCORED':
+        result['final_score'] = form.final_score
+        result['final_rating'] = form.final_rating
+        result['increment_recommendation'] = form.increment_recommendation
+        result['promotion_recommendation'] = form.promotion_recommendation
+        result['hr_notes'] = form.hr_notes
+    return jsonify(result)
+
 @app.route('/api/forms/<int:fid>/parta', methods=['POST'])
 @login_required
 def save_parta(fid):
