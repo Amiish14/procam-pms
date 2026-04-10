@@ -934,6 +934,84 @@ def admin_update_employee():
     db.session.commit()
     return jsonify({'success': True, 'message': f'Updated {emp.employee_code}'})
 
+@app.route('/api/admin/add_employee', methods=['POST'])
+@login_required
+def admin_add_employee():
+    if session.get('employee_code') != 'DIR12010':
+        return jsonify({'error': 'Only Super Admin (DIR12010) can add employees'}), 403
+    data = request.json or {}
+    code = (data.get('employee_code') or '').strip().upper()
+    name = (data.get('full_name') or '').strip()
+    role = (data.get('role') or 'EMPLOYEE').strip().upper()
+    desig = (data.get('designation') or '').strip()
+    mgr_code = (data.get('manager_code') or '').strip().upper()
+    password = (data.get('password') or code).strip()
+    if not code or not name:
+        return jsonify({'error': 'employee_code and full_name are required'}), 400
+    if len(code) < 3:
+        return jsonify({'error': 'employee_code must be at least 3 characters'}), 400
+    if role not in ('EMPLOYEE', 'MANAGER', 'HR_ADMIN', 'SUPER_ADMIN'):
+        return jsonify({'error': 'Invalid role. Use: EMPLOYEE, MANAGER, HR_ADMIN, SUPER_ADMIN'}), 400
+    if Employee.query.filter_by(employee_code=code).first():
+        return jsonify({'error': f'Employee {code} already exists'}), 400
+    mgr_id = None
+    if mgr_code:
+        mgr = Employee.query.filter_by(employee_code=mgr_code, is_active=True).first()
+        if not mgr:
+            return jsonify({'error': f'Manager {mgr_code} not found'}), 400
+        mgr_id = mgr.id
+    grade = Grade.query.filter_by(grade_code='E1').first()
+    dept = Department.query.first()
+    company = Company.query.first()
+    loc = Location.query.first()
+    emp = Employee(employee_code=code, full_name=name, designation=desig or 'Executive',
+                   grade_id=grade.id if grade else None, department_id=dept.id if dept else None,
+                   company_id=company.id if company else None, location_id=loc.id if loc else None,
+                   reporting_manager_id=mgr_id, is_active=True)
+    db.session.add(emp)
+    db.session.flush()
+    ua = UserAuth(employee_id=emp.id,
+                  password_hash=bcrypt.generate_password_hash(password).decode(),
+                  role=role, password_reset_required=True)
+    db.session.add(ua)
+    active = AppraisalCycle.query.filter_by(status='ACTIVE').first()
+    if active:
+        if not AppraisalForm.query.filter_by(cycle_id=active.id, employee_id=emp.id).first():
+            db.session.add(AppraisalForm(cycle_id=active.id, employee_id=emp.id))
+    db.session.commit()
+    return jsonify({'success': True, 'message': f'Added {code} ({name})'})
+
+@app.route('/api/admin/delete_employee', methods=['POST'])
+@login_required
+def admin_delete_employee():
+    if session.get('employee_code') != 'DIR12010':
+        return jsonify({'error': 'Only Super Admin (DIR12010) can delete employees'}), 403
+    data = request.json or {}
+    code = (data.get('employee_code') or '').strip().upper()
+    if not code:
+        return jsonify({'error': 'employee_code required'}), 400
+    if code == 'DIR12010':
+        return jsonify({'error': 'Cannot delete the Super Admin account'}), 400
+    emp = Employee.query.filter_by(employee_code=code).first()
+    if not emp:
+        return jsonify({'error': f'Employee {code} not found'}), 404
+    reports = Employee.query.filter_by(reporting_manager_id=emp.id, is_active=True).count()
+    if reports > 0:
+        return jsonify({'error': f'{code} has {reports} reportees. Reassign them first.'}), 400
+    forms = AppraisalForm.query.filter_by(employee_id=emp.id).all()
+    for f in forms:
+        PartARating.query.filter_by(form_id=f.id).delete()
+        PartAText.query.filter_by(form_id=f.id).delete()
+        PartBRating.query.filter_by(form_id=f.id).delete()
+        PartBText.query.filter_by(form_id=f.id).delete()
+        db.session.delete(f)
+    ua = UserAuth.query.filter_by(employee_id=emp.id).first()
+    if ua:
+        db.session.delete(ua)
+    db.session.delete(emp)
+    db.session.commit()
+    return jsonify({'success': True, 'message': f'Deleted {code}'})
+
 @app.route('/api/cycles', methods=['GET'])
 @login_required
 def get_cycles():
