@@ -505,7 +505,7 @@ EMPLOYEE_MASTER = [
 
     ('EMP2972023', 'JAYANTA KUMAR PAUL', 'Corporate', 'HR', 'E1', 'Executive', 'EMP2482019', 'EMPLOYEE', 'A1, A2, A3, A12, A13, A14, A15, A16', 'B1, B2, B3, B12, B13, B14, B15, B16'),
 
-    ('EMP2992023', 'DIPANKA TALUKDER', 'Corporate', 'Admin', 'E1', 'Executive', 'DIR12010', 'EMPLOYEE', 'A1, A2, A3, A13, A14, A15, A16', 'B1, B2, B3, B13, B14, B15, B16'),
+    ('EMP2992023', 'DIPANKA TALUKDER', 'Corporate', 'Admin', 'E1', 'Executive', 'DIR12010', 'EMPLOYEE', 'A1, A2, A3, A11, A14, A15, A16', 'B1, B2, B3, B11, B14, B15, B16'),
 
     ('EMP3122023', 'SUNITA NAGA ALKAR', 'Corporate', 'Finance', 'J2', 'Assistant', 'EMP182010', 'EMPLOYEE', 'A1, A2, A3, A8, A14, A15, A16', 'B1, B2, B3, B8, B14, B15, B16'),
 
@@ -895,6 +895,13 @@ def form_detail(fid):
     })
 
 # ─── EMPLOYEES & CYCLES ─────────────────────────────────────────────────────
+@app.route('/api/lookup', methods=['GET'])
+@login_required
+def get_lookups():
+    grades = [{'id': g.id, 'code': g.grade_code, 'name': g.grade_name} for g in Grade.query.order_by(Grade.sort_order).all()]
+    verticals = [{'id': d.id, 'code': d.vertical_code, 'name': d.dept_name} for d in Department.query.order_by(Department.vertical_code).all()]
+    return jsonify({'grades': grades, 'verticals': verticals})
+
 @app.route('/api/employees', methods=['GET'])
 @login_required
 def get_employees():
@@ -960,8 +967,8 @@ def admin_add_employee():
         if not mgr:
             return jsonify({'error': f'Manager {mgr_code} not found'}), 400
         mgr_id = mgr.id
-    grade = Grade.query.filter_by(grade_code='E1').first()
-    dept = Department.query.first()
+    grade = Grade.query.filter_by(grade_code=data.get('grade_code','E1').strip().upper() or 'E1').first() or Grade.query.first()
+    dept = Department.query.filter_by(vertical_code=data.get('vertical_code','').strip()).first() or Department.query.first()
     company = Company.query.first()
     loc = Location.query.first()
     emp = Employee(employee_code=code, full_name=name, designation=desig or 'Executive',
