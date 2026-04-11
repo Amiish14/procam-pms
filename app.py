@@ -527,6 +527,7 @@ EMPLOYEE_MASTER = [
 
     ('EMP3972025', 'SAMIKSHA CHANDRAKANT VAYNGANKAR', 'Corporate', 'Finance', 'J2', 'Accounts Supervisor', 'EMP3892025', 'EMPLOYEE', 'A1, A2, A3, A8, A14, A15, A16', 'B1, B2, B3, B8, B14, B15, B16'),
 
+     ('CON152014', 'RP SHAH', 'Corporate', 'Admin', 'C2', 'Director', 'DIR42010', 'EMPLOYEE', 'A1, A2, A3, A13, A14, A15, A16', 'B1, B2, B3, B13, B14, B15, B16'),
 ]
 
 
